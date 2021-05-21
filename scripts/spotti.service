@@ -1,0 +1,14 @@
+[Unit]
+Description=spotti
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=zack
+ExecStart=/home/zack/spotti/target/debug/spotti
+
+[Install]
+WantedBy=multi-user.target

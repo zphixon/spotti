@@ -1,0 +1,14 @@
+[Unit]
+Description=spotti discord downbot
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=zack
+ExecStart=python3 /home/zack/spotti/bot/downbot.py
+
+[Install]
+WantedBy=multi-user.target
