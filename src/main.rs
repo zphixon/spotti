@@ -84,6 +84,9 @@ table, td, th {
     padding-left: 4pt;
     padding-right: 8pt;
 }
+.datetime {
+    width: 20%;
+}
 </style>
 <body>
 <h1>what's zack been listening to recently?</h1>
@@ -366,6 +369,28 @@ for (el of document.getElementsByClassName('add')) {
         page.push_str("</em></p>");
     }
 
+    page.push_str(
+        r#"
+<script type=text/javascript>
+for (el of document.getElementsByClassName('datetime')) {
+    let date = new Date(el.innerText);
+    if (!isNaN(date.getYear())) {
+        el.textContent = date.toLocaleDateString(
+            'en-us', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric',
+                second: 'numeric',
+            }
+        );
+    }
+}
+</script>
+"#,
+    );
+
     page.push_str(PAGE_FOOTER);
 
     Ok((
@@ -507,7 +532,7 @@ fn make_table(results: &[SongRecord], session_auth: &Option<SessionAuth>) -> Str
             table.push_str(artist);
         }
         table.push_str("</td>");
-        table.push_str("<td>");
+        table.push_str("<td class='datetime'>");
         if let Some(date) = result.date.as_ref() {
             table.push_str(date);
         }
