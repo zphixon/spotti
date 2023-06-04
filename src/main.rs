@@ -39,7 +39,7 @@ fn unauthorized() -> response::Response {
         .into_response()
 }
 
-async fn not_found() -> response::Response {
+async fn not_found(extract::Path(path): extract::Path<String>) -> response::Response {
     (
         StatusCode::NOT_FOUND,
         Html(format!(
@@ -50,9 +50,11 @@ async fn not_found() -> response::Response {
     <h1>fuck</h1>
     <p>you DEFINITELY shouldn't be able to see this</p>
     <p>{}</p>
+    <p>you requested <pre>{}</pre></p>
   </body>
 </html>"#,
-            CONFIG.get_new_link("try this?")
+            CONFIG.get_new_link("try this?"),
+            path
         )),
     )
         .into_response()
