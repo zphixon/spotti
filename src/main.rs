@@ -50,7 +50,7 @@ async fn not_found(extract::OriginalUri(path): extract::OriginalUri) -> response
     <h1>fuck</h1>
     <p>you DEFINITELY shouldn't be able to see this</p>
     <p>{}</p>
-    <p>you requested <pre>{}</pre></p>
+    <p>you requested "{}"</p>
   </body>
 </html>"#,
             CONFIG.get_new_link("try this?"),
