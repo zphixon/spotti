@@ -39,7 +39,7 @@ fn unauthorized() -> response::Response {
         .into_response()
 }
 
-async fn not_found(extract::Path(path): extract::Path<String>) -> response::Response {
+async fn not_found(extract::OriginalUri(path): extract::OriginalUri) -> response::Response {
     (
         StatusCode::NOT_FOUND,
         Html(format!(
