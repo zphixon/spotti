@@ -343,12 +343,12 @@ function addToQueue(id) {
         page.push_str(
             r#"'
         },
+        'body': JSON.stringify({
+            'uris': [id],
+        }),
     };
 
-    fetch('https://api.spotify.com/v1/me/player/queue?uri=' + id, req)
-        .then((response) => console.log(response))
-
-    fetch('https://api.spotify.com/v1/me/player/next', req)
+    fetch('https://api.spotify.com/v1/me/player/play', req)
         .then((response) => console.log(response))
 }
 
