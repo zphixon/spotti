@@ -335,7 +335,7 @@ async fn do_db_stuff(session: WritableSession, limit: Option<u32>) -> Result<res
 function addToQueue(id) {
     let req = {
         'mode': 'cors',
-        'method': 'POST',
+        'method': 'PUT',
         'headers': {
             'Authorization': 'Bearer "#,
         );
