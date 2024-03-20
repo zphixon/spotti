@@ -320,7 +320,7 @@ async fn do_db_stuff(session: WritableSession, limit: Option<u32>) -> Result<res
 
     if session_auth.is_none() {
         page.push_str(&format!(
-            "<p>{} to listen in (make sure your queue is clear, its kinda janky)</p>",
+            "<p>{} to listen in (requres spotify premium and clears your queue)</p>",
             CONFIG.authorize_link("log in")
         ));
     }
