@@ -45,9 +45,9 @@ async fn not_found(extract::OriginalUri(path): extract::OriginalUri) -> response
         Html(format!(
             r#"<!doctype html>
 <html>
-  <head><title>shit</title></head>
+  <head><title>uhhhh</title></head>
   <body>
-    <h1>fuck</h1>
+    <h1>uhhhh</h1>
     <p>you DEFINITELY shouldn't be able to see this</p>
     <p>{}</p>
     <p>you requested "{}"</p>
@@ -78,7 +78,7 @@ static START_TIME: Lazy<DateTime<Utc>> = Lazy::new(|| Utc::now());
 
 const PAGE_HEADER: &str = r#"
 <!doctype html>
-<head><title>spotti</title></head>
+<head><title>NOT LAST.FM</title></head>
 <style>
 table, td, th {
     border: 1px solid #090;
@@ -124,7 +124,7 @@ macro_rules! five_hundred {
                 Html(format!(
                     r#"<!doctype html>
 <html>
-  <head><title>spotti: 500</title></head>
+  <head><title>NOT LAST.FM: 500</title></head>
   <body>
     <h1>500 internal server error</h1>
     <p>{}</p>
@@ -267,7 +267,7 @@ async fn refresh() -> Result<response::Response> {
     Ok(Html(format!(
         r#"<!doctype html>
 <html>
-  <head><title>spotti: refreshed</title></head>
+  <head><title>NOT LAST.FM: refreshed</title></head>
   <body>
     <h1>ahhhhh</h1>
     <p>refreshing. {}</p>
@@ -601,7 +601,7 @@ async fn do_oauth2(code: &str, session: &mut WritableSession) -> Result<response
 
     Ok(Html(format!(
         r#"<!doctype html>
-  <head><title>spotti: authorized</title></head>
+  <head><title>NOT LAST.FM: authorized</title></head>
   <body>
     <h1>nice! you're authorized</h1>
     <p><em>{}</em></p>
