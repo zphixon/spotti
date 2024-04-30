@@ -5,3 +5,4 @@ scripts/secret.py
 scripts/__pycache__
 status.txt
 bot/pid.txt
+bot/downbot.venv
