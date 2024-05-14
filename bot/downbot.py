@@ -85,9 +85,11 @@ async def check_loop():
             msg = (
                 "sad:\n"
                 + "".join(traceback.format_exception(e1))
-                + await first_request.text()
-                if first_request is not None
-                else "first request failed\n"
+                + (
+                    await first_request.text()
+                    if first_request is not None
+                    else "first request failed\n"
+                )
             )
 
             try:
@@ -100,9 +102,11 @@ async def check_loop():
                 msg += (
                     "refresh also failed:\n"
                     + "".join(traceback.format_exception(e2))
-                    + await second_request.text()
-                    if second_request is not None
-                    else "second request failed"
+                    + (
+                        await second_request.text()
+                        if second_request is not None
+                        else "second request failed"
+                    )
                 )
                 print("damn")
                 await send_message("```\n" + msg + "\n```")
