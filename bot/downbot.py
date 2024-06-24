@@ -75,7 +75,7 @@ async def check_loop():
             first_request.raise_for_status()
 
             if "global auth was not available" in await first_request.text():
-		print("no global auth")
+                print("no global auth")
                 await send_message("no global auth")
                 is_broke = True
             else:
