@@ -75,6 +75,7 @@ async def check_loop():
             first_request.raise_for_status()
 
             if "global auth was not available" in await first_request.text():
+		print("no global auth")
                 await send_message("no global auth")
                 is_broke = True
             else:
@@ -108,12 +109,14 @@ async def check_loop():
                         else "second request failed"
                     )
                 )
-                print("damn")
+
+                print("damn", msg)
                 await send_message("```\n" + msg + "\n```")
 
         if was_broke and not is_broke:
             await send_message("thx bby!!!!!!")
 
+        print("ok!")
         await asyncio.sleep(config["spotti_poll"])
 
 
