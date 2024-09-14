@@ -1,24 +1,17 @@
 use axum::{
     extract,
-    headers::AccessControlAllowOrigin,
     http::StatusCode,
     response,
     response::{Html, IntoResponse, Result},
-    routing, TypedHeader,
+    routing,
 };
-use axum_sessions::{
-    async_session::{
-        self,
-        chrono::{DateTime, Utc},
-    },
-    extractors::WritableSession,
-    SessionLayer,
-};
+use axum_extra::{headers::AccessControlAllowOrigin, TypedHeader};
 use once_cell::sync::Lazy;
 use rand::RngCore;
 use reqwest as request;
 use spotti::{Config, GlobalAuth, Listens, Me, SessionAuth, SongRecord, StringConfig, TokenPair};
-use std::{net::SocketAddr, sync::RwLock};
+use std::{net::SocketAddr, sync::RwLock, time::Instant};
+use tower_sessions::Session;
 use url::Url;
 
 fn unauthorized() -> response::Response {
@@ -74,7 +67,7 @@ static CONFIG: Lazy<Config> = Lazy::new(|| {
 
 static GLOBAL_AUTH: Lazy<RwLock<Option<GlobalAuth>>> = Lazy::new(|| RwLock::new(None));
 
-static START_TIME: Lazy<DateTime<Utc>> = Lazy::new(|| Utc::now());
+static START_TIME: Lazy<Instant> = Lazy::new(|| Instant::now());
 
 const PAGE_HEADER: &str = r#"
 <!doctype html>
@@ -162,8 +155,8 @@ async fn main() {
 
     let mut secret = [0; 512];
     rand::thread_rng().fill_bytes(&mut secret);
-    let store = async_session::MemoryStore::new();
-    let session_layer = SessionLayer::new(store, &secret);
+    let store = tower_sessions::MemoryStore::default();
+    let session_layer = tower_sessions::SessionManagerLayer::new(store);
 
     let app = axum::Router::new()
         .route(&CONFIG.get_new_url.path(), routing::get(get_new))
@@ -176,24 +169,27 @@ async fn main() {
     let app = app.fallback(not_found);
 
     tracing::info!("listening on {:?}", &CONFIG.address);
-    axum::Server::bind(&CONFIG.address)
-        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
+    let listener = tokio::net::TcpListener::bind(&CONFIG.address)
+        .await
+        .unwrap();
+
+    axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
 }
 
-async fn get_new(session: WritableSession) -> Result<response::Response> {
+async fn get_new(session: Session) -> Result<response::Response> {
     do_db_stuff(session, Some(CONFIG.get_new_limit)).await
 }
 
-async fn show_all(session: WritableSession) -> Result<response::Response> {
+async fn show_all(session: Session) -> Result<response::Response> {
     do_db_stuff(session, None).await
 }
 
 async fn authorize(
     extract::Query(query): extract::Query<std::collections::HashMap<String, String>>,
     extract::ConnectInfo(addr): extract::ConnectInfo<SocketAddr>,
-    mut session: WritableSession,
+    mut session: Session,
 ) -> Result<response::Response> {
     if let Some(code) = query.get("code") {
         tracing::debug!("{addr} got code, doing oauth2");
@@ -220,9 +216,12 @@ async fn authorize(
 
 async fn refresh() -> Result<response::Response> {
     let refresh_url = {
-        let Some(auth) = &*GLOBAL_AUTH.read().map_err(five_hundred!("lock global auth refresh read"))? else {
-        return Ok(unauthorized());
-    };
+        let Some(auth) = &*GLOBAL_AUTH
+            .read()
+            .map_err(five_hundred!("lock global auth refresh read"))?
+        else {
+            return Ok(unauthorized());
+        };
 
         Url::parse_with_params(
             spotti::SPOTIFY_TOKEN_URL,
@@ -279,21 +278,33 @@ async fn refresh() -> Result<response::Response> {
 }
 
 async fn uptime() -> Result<response::Response> {
-    let uptime = Utc::now() - *START_TIME;
-    let s = uptime.num_seconds() - uptime.num_minutes() * 60;
-    let m = uptime.num_minutes() - uptime.num_hours() * 60;
-    let h = uptime.num_hours() - uptime.num_days() * 24;
-    let d = uptime.num_days();
-    Ok(format!("{d}d {h}h {m}m {s}s").into_response())
+    let uptime = Instant::now() - *START_TIME;
+
+    // https://www.satsig.net/training/seconds-days-hours-minutes-calculator.htm
+    let totalseconds = uptime.as_secs();
+
+    let day = 86400;
+    let hour = 3600;
+    let minute = 60;
+
+    let daysout = totalseconds / day;
+    let hoursout = (totalseconds - daysout * day) / hour;
+    let minutesout = (totalseconds - daysout * day - hoursout * hour) / minute;
+    let secondsout = totalseconds - daysout * day - hoursout * hour - minutesout * minute;
+
+    Ok(format!("{daysout}d {hoursout}h {minutesout}m {secondsout}s").into_response())
 }
 
-async fn do_db_stuff(session: WritableSession, limit: Option<u32>) -> Result<response::Response> {
+async fn do_db_stuff(session: Session, limit: Option<u32>) -> Result<response::Response> {
     let global_auth = {
         let guard = GLOBAL_AUTH.read().unwrap();
         guard.clone()
     };
 
-    let session_auth = session.get::<SessionAuth>("auth");
+    let session_auth = session
+        .get::<SessionAuth>("auth")
+        .await
+        .map_err(five_hundred!("get auth"))?;
     let global_auth_available = global_auth.is_some();
     if let Some(global_auth) = &global_auth {
         write_to_db(global_auth).await?;
@@ -429,7 +440,7 @@ async fn write_to_db(auth: &GlobalAuth) -> Result<()> {
         .await
         .map_err(five_hundred!("sql pool"))?;
 
-    let mut conn = pool.begin().await.map_err(five_hundred!("start xact"))?;
+    let tx = pool.begin().await.map_err(five_hundred!("start xact"))?;
 
     for listen in listens.items {
         let mut artist = String::new();
@@ -448,12 +459,12 @@ async fn write_to_db(auth: &GlobalAuth) -> Result<()> {
             listen.played_at,
             listen.track.id,
         )
-        .execute(&mut conn)
+        .execute(&pool)
         .await
         .map_err(five_hundred!("db insert"))?;
     }
 
-    conn.commit().await.map_err(five_hundred!("xact commit"))?;
+    tx.commit().await.map_err(five_hundred!("xact commit"))?;
 
     Ok(())
 }
@@ -553,7 +564,7 @@ fn make_table(results: &[SongRecord], session_auth: &Option<SessionAuth>) -> Str
     table
 }
 
-async fn do_oauth2(code: &str, session: &mut WritableSession) -> Result<response::Response> {
+async fn do_oauth2(code: &str, session: &mut Session) -> Result<response::Response> {
     let token_url = Url::parse_with_params(
         spotti::SPOTIFY_TOKEN_URL,
         &[
@@ -597,6 +608,7 @@ async fn do_oauth2(code: &str, session: &mut WritableSession) -> Result<response
     tracing::trace!("tokens={:?}", tokens);
     session
         .insert("auth", SessionAuth(tokens))
+        .await
         .map_err(five_hundred!("token session"))?;
 
     Ok(Html(format!(
