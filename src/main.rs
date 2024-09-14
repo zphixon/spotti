@@ -1,9 +1,8 @@
 use axum::{
     extract,
     http::StatusCode,
-    response,
-    response::{Html, IntoResponse, Result},
-    routing,
+    response::{self, Html, IntoResponse, Result},
+    routing, ServiceExt,
 };
 use axum_extra::{headers::AccessControlAllowOrigin, TypedHeader};
 use once_cell::sync::Lazy;
@@ -173,9 +172,12 @@ async fn main() {
         .await
         .unwrap();
 
-    axum::serve(listener, app.into_make_service())
-        .await
-        .unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
 async fn get_new(session: Session) -> Result<response::Response> {
