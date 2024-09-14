@@ -168,7 +168,7 @@ async fn main() {
 
     let app = app.fallback(not_found);
 
-    tracing::info!("listening on {:?}", &CONFIG.address);
+    tracing::info!("listening at {:?}", &CONFIG.address);
     let listener = tokio::net::TcpListener::bind(&CONFIG.address)
         .await
         .unwrap();
